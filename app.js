@@ -500,9 +500,11 @@ function homeHTML() {
   }
 
   return `
-    <p class="muted">Next up</p>
-    <div class="next-day-name">${next.name}</div>
-    <ul class="plain-list">${exerciseList}</ul>
+    <section class="day-hero">
+      <p class="eyebrow">Next up</p>
+      <div class="next-day-name">${next.name}</div>
+      <ul class="plain-list">${exerciseList}</ul>
+    </section>
     <h2>Or pick a different day</h2>
     <div class="day-grid">${dayButtons}</div>
     <div class="action-bar">${mainButton}</div>`;
@@ -515,9 +517,11 @@ function workoutHTML() {
   const editing = Boolean(draft.editingId);
 
   return `
-    <h1>${esc(dayName(draft.dayId))}</h1>
-    <p class="muted" id="done-count">${doneCountText()}</p>
-    ${editing ? `<p class="muted small">Editing ${formatFullDate(draft.editingDate)}</p>` : ''}
+    <section class="day-hero">
+      <h1>${esc(dayName(draft.dayId))}</h1>
+      <p class="muted" id="done-count">${doneCountText()}</p>
+      ${editing ? `<p class="muted small">Editing ${formatFullDate(draft.editingDate)}</p>` : ''}
+    </section>
     ${cards}
     <div class="spaced">
       <button type="button" class="btn primary" data-action="finish">${editing ? 'Save changes' : 'Finish workout'}</button>
@@ -545,8 +549,9 @@ function exerciseCardHTML(exercise, index) {
   }
 
   const rows = exercise.sets.map((set, setIndex) => {
-    // Last time's reps show as a faint placeholder to aim for.
-    const repsGoal = last && last.sets[setIndex] ? last.sets[setIndex].reps : '';
+    // Last time's reps show as a faint placeholder to aim for. The placeholder
+    // is never empty, because style.css uses it to spot a set with no reps yet.
+    const repsGoal = last && last.sets[setIndex] ? last.sets[setIndex].reps : '–';
     return `
       <div class="set-row">
         <div class="set-num">${setIndex + 1}</div>
@@ -811,11 +816,11 @@ function progressHTML() {
    scales and can't share one axis.
    ========================================================================== */
 const CHART = {
-  surface: '#171B22',   // same as --surface in style.css
-  grid: '#2D3440',
-  text: '#A3ADBB',
-  line: '#3B82F6',
-  best: '#D97706',
+  surface: '#26231F',   // same as --surface in style.css
+  grid: '#3F3930',
+  text: '#A89C85',
+  line: '#D9732B',      // burnt orange
+  best: '#F1E8D6',      // cream, on the diamonds marking a new best
   pad: { top: 12, right: 12, bottom: 26, left: 48 },
 };
 

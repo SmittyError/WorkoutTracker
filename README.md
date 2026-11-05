@@ -12,6 +12,7 @@ A simple app that I can use to track workouts. It's plain HTML, CSS and JavaScri
 | `sw.js` | Service worker for offline use |
 | `manifest.webmanifest` | Home screen app settings |
 | `icons/` | App icons |
+| `fonts/` | Oswald heading font and its license, stored here so it works offline |
 
 To change your program, edit `PLAN` at the top of `app.js`.
 
