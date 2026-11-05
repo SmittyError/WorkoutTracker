@@ -485,8 +485,23 @@ label.btn { display: flex; align-items: center; justify-content: center; cursor:
   font: 18px var(--font-body);
 }
 .text-input:focus { outline: none; border-color: var(--accent); }
-/* iOS draws date inputs its own way, so this keeps them lined up with the others. */
-input[type="date"].text-input { -webkit-appearance: none; appearance: none; text-align: left; }
+/* iOS draws date inputs its own way and puts the date at the top of the box.
+   Making the box a flex row and setting the height of the date's own inner part
+   centers it. 48px is the 52px box minus its 2px top and bottom borders. */
+input[type="date"].text-input {
+  -webkit-appearance: none;
+  appearance: none;
+  display: flex;
+  align-items: center;
+  line-height: 48px;
+  text-align: left;
+}
+input[type="date"].text-input::-webkit-date-and-time-value {
+  min-height: 48px;
+  margin: 0;
+  line-height: 48px;
+  text-align: left;
+}
 .inline-form { display: flex; gap: 8px; align-items: flex-end; }
 .inline-form .text-input { flex: 1; min-width: 0; }
 .inline-form .tool { flex: none; min-height: var(--tap); background: var(--accent); color: var(--on-accent); }
