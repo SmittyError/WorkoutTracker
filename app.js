@@ -12,6 +12,7 @@
      9. Charts             the canvas line charts
     10. Backup             export and import
     11. Events             what happens when you tap or type
+    12. Updates            installing new versions without interrupting you
    ========================================================================== */
 'use strict';
 
@@ -88,7 +89,9 @@ const PATTERNS = {
   'Calves': ['Calf Raise', 'Seated Calf Raise', 'Leg Press Calf Raise'],
 };
 
-const TOP_OF_REP_RANGE = 12; // Hitting this on every set earns the "add weight" hint.
+// Each exercise starts with this rep range, and you can change it from its card.
+// Hitting the top on every set earns the "add weight" hint.
+const DEFAULT_REP_RANGE = { min: 8, max: 12 };
 const MIN_SET_ROWS = 3;
 const MAX_SET_ROWS = 4;
 const SESSIONS_PER_WEEK = 4;
@@ -108,6 +111,9 @@ const WEIGHT_STEPS = [2.5, 5, 10];
        { id, date, weight }
      ],
      settings: { weightStep, units },
+     repRanges: {              only the exercises you've changed
+       'Squat': { min: 5, max: 8 }
+     },
      lastExportDate: null,     'YYYY-MM-DD' of the last backup
      draft: null               the workout in progress (see section 6)
    }
@@ -137,9 +143,22 @@ function normalizeData(raw) {
       weightStep: WEIGHT_STEPS.includes(settings.weightStep) ? settings.weightStep : 5,
       units: settings.units === 'kg' ? 'kg' : 'lbs',
     },
+    repRanges: normalizeRepRanges(source.repRanges),
     lastExportDate: isDateString(source.lastExportDate) ? source.lastExportDate : null,
     draft: normalizeDraft(source.draft),
   };
+}
+
+function isValidRepRange(min, max) {
+  return Number.isInteger(min) && Number.isInteger(max) && min >= 1 && min <= max && max <= 100;
+}
+
+// Keeps only valid rep ranges, so one bad entry can't break the app.
+function normalizeRepRanges(ranges) {
+  if (!isObject(ranges)) return {};
+  return Object.fromEntries(Object.entries(ranges)
+    .filter(([, range]) => isObject(range) && isValidRepRange(range.min, range.max))
+    .map(([name, range]) => [name, { min: range.min, max: range.max }]));
 }
 
 // Returns a usable draft, or null if there isn't one. Older drafts had no tick
@@ -161,6 +180,7 @@ function normalizeDraft(draft) {
       superset: ex.superset || null,
       defaultSets: ex.defaultSets || MIN_SET_ROWS,
       note: typeof ex.note === 'string' ? ex.note : '',
+      weightBump: Number(ex.weightBump) || 0,
       sets: ex.sets.filter(isObject).map((row) => {
         const reps = row.reps === undefined || row.reps === null ? '' : String(row.reps);
         return {
@@ -291,9 +311,14 @@ function lastSession(name, beforeDate = Infinity) {
   return sessionsFor(name, beforeDate).pop() || null;
 }
 
-// True when every set reached the top of the rep range.
-function hitTopOfRange(sets) {
-  return sets.length > 0 && sets.every((set) => set.reps >= TOP_OF_REP_RANGE);
+function repRangeFor(name) {
+  return data.repRanges[name] || DEFAULT_REP_RANGE;
+}
+
+// True when every set reached the top of this exercise's rep range.
+function hitTopOfRange(sets, name) {
+  const top = repRangeFor(name).max;
+  return sets.length > 0 && sets.every((set) => set.reps >= top);
 }
 
 // Compares these sets with all earlier sessions. Returns the records beaten:
@@ -472,6 +497,7 @@ function backupIsOverdue() {
      dayId, units, editingId, editingDate,    editing fields are null for a new workout
      exercises: [{
        name, slot, pattern, superset, defaultSets, note,
+       weightBump,                             how much "Add weight" raised this session
        sets: [{ weight: '135', reps: '8', done: false }]
      }]
    }
@@ -524,6 +550,7 @@ function newDraftExercise(slot, slotIndex, beforeDate) {
     superset: slot.superset || null,
     defaultSets: slot.sets,
     note: '',
+    weightBump: 0,
     sets: prefilledSets(name, slot.sets, beforeDate),
   };
 }
@@ -593,6 +620,7 @@ function editWorkout(id) {
       pattern: patternOf(extra.name),
       superset: null,
       defaultSets: MIN_SET_ROWS,
+      weightBump: 0,
     }, extra));
   }
 
@@ -666,6 +694,16 @@ function toggleSet(exerciseIndex, setIndex) {
   }
   refreshCard(exerciseIndex);
   ui.justDone = null;
+}
+
+// Raises or lowers every set you haven't done yet. Blank rows stay blank.
+function changeUpcomingWeights(exercise, amount) {
+  for (const row of exercise.sets) {
+    const value = parseFloat(String(row.weight).replace(',', '.'));
+    if (!row.done && Number.isFinite(value)) {
+      row.weight = String(Math.max(0, Math.round((value + amount) * 100) / 100));
+    }
+  }
 }
 
 function saveFinishedWorkout() {
@@ -880,8 +918,10 @@ function exerciseCardHTML(exercise, index) {
   const setButton = canAdd
     ? `<button type="button" class="tool" data-action="addSet" data-ex="${index}">+ Add a set</button>`
     : exercise.sets.length > MIN_SET_ROWS
-      ? `<button type="button" class="tool" data-action="removeSet" data-ex="${index}">− Remove last set</button>`
+      ? `<button type="button" class="tool" data-action="removeSet" data-ex="${index}">− Remove set</button>`
       : '';
+
+  const range = repRangeFor(exercise.name);
 
   // Notes stay collapsed until you ask for them.
   const notesOpen = ui.openNotes[index];
@@ -906,10 +946,11 @@ function exerciseCardHTML(exercise, index) {
         <button type="button" class="tool" data-action="openReplace" data-ex="${index}">Replace</button>
       </div>
       ${rows}
-      <div class="status">${statusHTML(exercise)}</div>
+      <div class="status">${statusHTML(exercise, index)}</div>
       ${notes}
       <div class="card-tools">
         ${setButton}
+        <button type="button" class="tool" data-action="openRepRange" data-ex="${index}">Target ${range.min}–${range.max}</button>
         <button type="button" class="tool" aria-expanded="${Boolean(notesOpen)}" data-action="toggleNotes" data-ex="${index}">${noteLabel}</button>
       </div>
     </section>`;
@@ -972,23 +1013,31 @@ function currentSetHTML(row, exerciseIndex, setIndex) {
 }
 
 // The hints and chips under an exercise. These re-run whenever a set is ticked.
-function statusHTML(exercise) {
+function statusHTML(exercise, index) {
   const cutoff = draftCutoff();
   const last = lastSession(exercise.name, cutoff);
   const sets = loggedSets(exercise);
+  const top = repRangeFor(exercise.name).max;
 
   // Before you start: did last session already earn more weight?
   if (sets.length === 0) {
-    if (last && hitTopOfRange(last.sets)) {
-      return `<span class="hint">⬆ Ready to add weight: you hit ${TOP_OF_REP_RANGE} on every set last time</span>`;
+    if (last && hitTopOfRange(last.sets, exercise.name)) {
+      // Once you've added weight, offer an undo. A second "Add" tap can't happen by accident.
+      if (exercise.weightBump) {
+        return `<span class="chip up">▲ Added ${num(exercise.weightBump)} ${unit()}</span>
+          <button type="button" class="tool" data-action="undoAddWeight" data-ex="${index}">Undo</button>`;
+      }
+      const addButton = data.draft.editingId ? '' : `
+        <button type="button" class="tool accent" data-action="addWeight" data-ex="${index}">Add ${num(data.settings.weightStep)} ${unit()}</button>`;
+      return `<span class="hint">⬆ Ready to add weight: you hit ${top} on every set last time</span>${addButton}`;
     }
     return '';
   }
 
   const finished = exerciseIsDone(exercise);
   let html = '';
-  if (finished && hitTopOfRange(sets)) {
-    html += `<span class="hint">⬆ Ready to add weight next time: ${TOP_OF_REP_RANGE}+ on every set</span>`;
+  if (finished && hitTopOfRange(sets, exercise.name)) {
+    html += `<span class="hint">⬆ Ready to add weight next time: ${top}+ on every set</span>`;
   }
   html += recordBadgesHTML(findRecords(exercise.name, sets, cutoff));
   // The comparison waits until the exercise is finished, because volume always
@@ -1302,7 +1351,7 @@ function renderSheet() {
     sheetRoot.innerHTML = '';
     return;
   }
-  const builders = { replace: replaceSheetHTML, finish: finishSheetHTML, bodyweight: bodyweightSheetHTML };
+  const builders = { replace: replaceSheetHTML, finish: finishSheetHTML, bodyweight: bodyweightSheetHTML, repRange: repRangeSheetHTML };
   sheetRoot.innerHTML = `
     <div class="sheet-backdrop" data-action="closeSheet"></div>
     <div class="sheet" role="dialog" aria-modal="true">${builders[ui.sheet.type]()}</div>`;
@@ -1372,10 +1421,50 @@ function replaceExercise(name) {
   const index = ui.sheet.ex;
   const exercise = data.draft.exercises[index];
   exercise.name = name;
+  exercise.weightBump = 0;
   const fresh = prefilledSets(name, exercise.defaultSets, draftCutoff());
   const kept = exercise.sets.filter((row) => row.done);
   exercise.sets = kept.concat(fresh.slice(kept.length));
   delete ui.activeSet[index];
+  closeSheet();
+  refreshCard(index);
+}
+
+/* --- Rep range ----------------------------------------------------------- */
+function repRangeSheetHTML() {
+  const { name } = data.draft.exercises[ui.sheet.ex];
+  const range = repRangeFor(name);
+  return `
+    <h2>Rep range: ${esc(name)}</h2>
+    <p class="muted small">Used every time you do this exercise. Hit the top on every set and you're ready to add weight.</p>
+    <form data-submit="saveRepRange">
+      <div class="range-fields sheet-section">
+        <div>
+          <label class="label" for="rep-min">Bottom</label>
+          <input class="text-input" id="rep-min" inputmode="numeric" autocomplete="off" value="${range.min}">
+        </div>
+        <div>
+          <label class="label" for="rep-max">Top</label>
+          <input class="text-input" id="rep-max" inputmode="numeric" autocomplete="off" value="${range.max}">
+        </div>
+      </div>
+      <p class="set-error" id="rep-range-error"></p>
+      <button type="submit" class="btn primary spaced">Save</button>
+    </form>
+    <button type="button" class="btn quiet" data-action="closeSheet">Cancel</button>`;
+}
+
+function saveRepRange() {
+  const minText = document.getElementById('rep-min').value.trim();
+  const maxText = document.getElementById('rep-max').value.trim();
+  const min = /^\d+$/.test(minText) ? Number(minText) : NaN;
+  const max = /^\d+$/.test(maxText) ? Number(maxText) : NaN;
+  if (!isValidRepRange(min, max)) {
+    document.getElementById('rep-range-error').textContent = 'Enter whole numbers from 1 to 100, with the top at or above the bottom.';
+    return;
+  }
+  const index = ui.sheet.ex;
+  data.repRanges[data.draft.exercises[index].name] = { min, max };
   closeSheet();
   refreshCard(index);
 }
@@ -1830,6 +1919,19 @@ const actions = {
     data.draft.exercises[dataset.ex].sets.pop();
     refreshCard(Number(dataset.ex));
   },
+  addWeight(dataset) {
+    const exercise = data.draft.exercises[dataset.ex];
+    exercise.weightBump = data.settings.weightStep;
+    changeUpcomingWeights(exercise, exercise.weightBump);
+    refreshCard(Number(dataset.ex));
+  },
+  undoAddWeight(dataset) {
+    const exercise = data.draft.exercises[dataset.ex];
+    changeUpcomingWeights(exercise, -exercise.weightBump);
+    exercise.weightBump = 0;
+    refreshCard(Number(dataset.ex));
+  },
+  openRepRange(dataset) { openSheet({ type: 'repRange', ex: Number(dataset.ex) }); },
   toggleNotes(dataset) {
     ui.openNotes[dataset.ex] = !ui.openNotes[dataset.ex];
     refreshCard(Number(dataset.ex));
@@ -1869,6 +1971,7 @@ const actions = {
     // Convert any weights already typed into the workout in progress.
     if (data.draft && data.draft.units !== next) {
       for (const exercise of data.draft.exercises) {
+        exercise.weightBump = round1(convertWeight(exercise.weightBump, data.draft.units, next));
         for (const row of exercise.sets) {
           const value = parseFloat(String(row.weight).replace(',', '.'));
           if (value > 0) row.weight = String(round1(convertWeight(value, data.draft.units, next)));
@@ -1894,6 +1997,7 @@ const submitActions = {
     replaceExercise(match || typed);
   },
   saveBodyweight() { saveBodyweight(); },
+  saveRepRange() { saveRepRange(); },
 };
 
 document.addEventListener('click', (event) => {
@@ -1949,7 +2053,7 @@ document.addEventListener('change', (event) => {
 
 // Tapping a box selects its contents, so typing replaces a pre-filled number.
 document.addEventListener('focusin', (event) => {
-  if (event.target.matches('.field input, #bodyweight-input')) event.target.select();
+  if (event.target.matches('.field input, #bodyweight-input, #rep-min, #rep-max')) event.target.select();
 });
 
 // Rotating the phone changes the charts' width, so redraw them.
@@ -1959,14 +2063,83 @@ window.addEventListener('resize', () => {
 });
 
 /* ==========================================================================
-   START THE APP
+   12. UPDATES
+   sw.js holds a saved copy of the whole app. Each time you return to the app,
+   it checks GitHub for new files. If it finds any, it saves them all and tells
+   this page, which reloads as soon as doing so can't interrupt you: not during
+   a workout, with a sheet open, or while you're typing.
    ========================================================================== */
-render();
+const RETURN_VIEW_KEY = 'workoutTracker.returnView';
+let updateReady = false;
 
-// Registers the service worker that makes the app work offline. The relative
-// path matters: on GitHub Pages the app lives at /WorkoutTracker/, not /.
-if ('serviceWorker' in navigator) {
+function applyUpdateIfSafe() {
+  if (!updateReady || data.draft || ui.sheet) return;
+  if (document.activeElement && document.activeElement.matches('input, textarea, select')) return;
+  // Remember the screen, so the reload puts you back where you were.
+  try {
+    sessionStorage.setItem(RETURN_VIEW_KEY, JSON.stringify({ view: ui.view, detailId: ui.detailId }));
+  } catch (error) {
+    // The reload still works. It just opens on Home.
+  }
+  window.location.reload();
+}
+
+function restoreViewAfterUpdate() {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(RETURN_VIEW_KEY));
+    sessionStorage.removeItem(RETURN_VIEW_KEY);
+    if (saved && !data.draft && ['home', 'progress', 'settings', 'detail'].includes(saved.view)) {
+      ui.view = saved.view;
+      ui.detailId = saved.detailId;
+    }
+  } catch (error) {
+    // Nothing to restore, so the app opens normally.
+  }
+}
+
+async function checkForUpdate() {
+  const registration = await navigator.serviceWorker.getRegistration();
+  if (!registration) return;
+  registration.update().catch(() => {}); // Fails harmlessly with no signal.
+  if (registration.active) registration.active.postMessage('check-for-update');
+}
+
+function setUpUpdates() {
+  // Registers the service worker that makes the app work offline. The relative
+  // path matters: on GitHub Pages the app lives at /WorkoutTracker/, not /.
   navigator.serviceWorker.register('sw.js').catch(() => {
     // The app still works online without it.
   });
+
+  // sw.js found new app files.
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data === 'update-ready') {
+      updateReady = true;
+      applyUpdateIfSafe();
+    }
+  });
+
+  // sw.js itself changed. On a first install there's nothing to replace.
+  const replacingOlderWorker = Boolean(navigator.serviceWorker.controller);
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (replacingOlderWorker) {
+      updateReady = true;
+      applyUpdateIfSafe();
+    }
+  });
+
+  // Leaving is the best time to apply a waiting update, because you won't see it.
+  document.addEventListener('visibilitychange', () => {
+    applyUpdateIfSafe();
+    if (document.visibilityState === 'visible') checkForUpdate();
+  });
+
+  checkForUpdate();
 }
+
+/* ==========================================================================
+   START THE APP
+   ========================================================================== */
+restoreViewAfterUpdate();
+render();
+if ('serviceWorker' in navigator) setUpUpdates();

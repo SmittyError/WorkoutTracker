@@ -6,6 +6,7 @@ A simple app that I can use to track workouts. It's plain HTML, CSS and JavaScri
 
 - A repeating Push, Pull, Legs, Upper cycle, with weekly session and bodyweight tracking on the home screen
 - Fast set logging: steppers, pre-filled numbers, and one tap to complete a set
+- A rep range for each exercise, with a one-tap button to add weight once you've hit the top on every set
 - Exercise swaps for a single session, plus custom exercises
 - PR badges, and weight and volume comparisons with your last session
 - Bodyweight and per-exercise charts, plus a full workout history
@@ -52,7 +53,7 @@ The home screen app keeps its own data, separate from Safari, so log your workou
 
 ## Updating the app
 
-After you push a change, the app downloads it in the background the next time you open it. To see it, swipe the app away, open it while online, give it a few seconds, then swipe it away and open it again. Switching back to the app without swiping it away only resumes the old copy.
+Each time you return to the app while online, it checks for new files and installs them on its own. It waits if you're mid-workout, typing, or have a sheet open, and applies the update once you're done. There's no version number to change when you push.
 
 ## Backups
 
