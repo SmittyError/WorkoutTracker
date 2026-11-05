@@ -245,6 +245,7 @@ label.btn { display: flex; align-items: center; justify-content: center; cursor:
 
 .day-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: var(--gap); }
 .day-btn {
+  position: relative;
   min-height: 60px;
   padding: 4px;
   border-radius: var(--radius);
@@ -253,7 +254,14 @@ label.btn { display: flex; align-items: center; justify-content: center; cursor:
   font-weight: 500;
   letter-spacing: .03em;
 }
-.day-btn small { display: block; min-height: 18px; font: 700 14px/18px var(--font-body); color: var(--green-text); }
+/* The checkmark sits in the bottom edge, outside the text flow, so the day name
+   stays centered whether or not the day has a checkmark. */
+.day-btn small {
+  position: absolute;
+  left: 0; right: 0; bottom: 3px;
+  font: 700 14px/14px var(--font-body);
+  color: var(--green-text);
+}
 .day-btn.is-next { box-shadow: inset 0 0 0 2px var(--accent); }
 .day-btn.selected { background: var(--accent); color: var(--on-accent); }
 .day-btn.selected small { color: var(--on-accent); }
