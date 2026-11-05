@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport-fit=cover lets the app use the full screen, including around the notch. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Workout Tracker</title>
+  <meta name="description" content="A simple offline workout and progressive overload tracker.">
+
+  <!-- Home screen app settings. The manifest covers most browsers; the
+       apple-* tags are what iPhones read. -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0F1217">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Workouts">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- app.js fills this in. Each screen is drawn here, one at a time. -->
+  <main id="app"></main>
+
+  <!-- The tab bar sits at the bottom, within reach of your thumb. -->
+  <nav class="tabs" aria-label="Main">
+    <button type="button" class="tab" data-action="goTab" data-tab="home">Workout</button>
+    <button type="button" class="tab" data-action="goTab" data-tab="progress">Progress</button>
+    <button type="button" class="tab" data-action="goTab" data-tab="history">History</button>
+  </nav>
+
+  <script src="app.js"></script>
+</body>
+</html>
