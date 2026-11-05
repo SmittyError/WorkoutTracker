@@ -2,19 +2,28 @@
 
 A simple app that I can use to track workouts. It's plain HTML, CSS and JavaScript with no build step or backend, and it works offline. All data stays on the phone in localStorage.
 
+## Features
+
+- A repeating Push, Pull, Legs, Upper cycle, with weekly session and bodyweight tracking on the home screen
+- Fast set logging: steppers, pre-filled numbers, and one tap to complete a set
+- Exercise swaps for a single session, plus custom exercises
+- PR badges, and weight and volume comparisons with your last session
+- Bodyweight and per-exercise charts, plus a full workout history
+- Settings for weight step and units (lbs or kg), plus JSON backup and restore
+
 ## Files
 
 | File | Purpose |
 | --- | --- |
 | `index.html` | Page shell and iPhone install tags |
 | `style.css` | Dark, mobile-first styles |
-| `app.js` | Plan, data, logging, records, chart and history |
+| `app.js` | Plan, data, logging, records, charts, history and settings |
 | `sw.js` | Service worker for offline use |
 | `manifest.webmanifest` | Home screen app settings |
 | `icons/` | App icons |
 | `fonts/` | Oswald heading font and its license, stored here so it works offline |
 
-To change your program, edit `PLAN` at the top of `app.js`.
+To change your program, edit `PLAN` at the top of `app.js`. The alternatives offered by the Replace button are in `PATTERNS`, just below it.
 
 ## Run it locally
 
@@ -43,8 +52,8 @@ The home screen app keeps its own data, separate from Safari, so log your workou
 
 ## Updating the app
 
-After you push a change, the app downloads it in the background. You'll see the new version the second time you open it.
+After you push a change, the app downloads it in the background the next time you open it. To see it, swipe the app away, open it while online, give it a few seconds, then swipe it away and open it again. Switching back to the app without swiping it away only resumes the old copy.
 
 ## Backups
 
-Workouts exist only on your phone, and removing the home screen icon can erase them. Use **History → Export backup** now and then to save a copy to Files.
+Workouts exist only on your phone, and removing the home screen icon can erase them. Use **Settings → Export backup** now and then to save a copy to Files. The home screen reminds you if it's been over 30 days.

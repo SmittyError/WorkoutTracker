@@ -10,7 +10,7 @@
   <!-- Home screen app settings. The manifest covers most browsers; the
        apple-* tags are what iPhones read. -->
   <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#1C1A17">
+  <meta name="theme-color" content="#0F0F0F">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Workouts">
@@ -23,11 +23,14 @@
   <!-- app.js fills this in. Each screen is drawn here, one at a time. -->
   <main id="app"></main>
 
+  <!-- Bottom sheets (Replace, Finish, Bodyweight) are drawn here, above everything. -->
+  <div id="sheet-root"></div>
+
   <!-- The tab bar sits at the bottom, within reach of your thumb. -->
   <nav class="tabs" aria-label="Main">
-    <button type="button" class="tab" data-action="goTab" data-tab="home">Workout</button>
+    <button type="button" class="tab" data-action="goTab" data-tab="home">Home</button>
     <button type="button" class="tab" data-action="goTab" data-tab="progress">Progress</button>
-    <button type="button" class="tab" data-action="goTab" data-tab="history">History</button>
+    <button type="button" class="tab" data-action="goTab" data-tab="settings">Settings</button>
   </nav>
 
   <script src="app.js"></script>
